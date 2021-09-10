@@ -53,15 +53,15 @@ func (v *spout) Close() error {
 	return nil
 }
 
-type tee struct {
+type Tee struct {
 	sync.RWMutex
 	buf    chan []byte
 	spouts map[chan []byte]io.WriteCloser
 	closed bool
 }
 
-func NewTee(buflen int) *tee {
-	h := tee{
+func NewTee(buflen int) *Tee {
+	h := Tee{
 		RWMutex: sync.RWMutex{},
 		buf:     make(chan []byte, buflen),
 		spouts:  make(map[chan []byte]io.WriteCloser),
@@ -89,7 +89,7 @@ func NewTee(buflen int) *tee {
 	return &h
 }
 
-func (t *tee) Write(bs []byte) (int, error) {
+func (t *Tee) Write(bs []byte) (int, error) {
 	if t.closed {
 		return 0, ErrClosed
 	}
@@ -97,7 +97,7 @@ func (t *tee) Write(bs []byte) (int, error) {
 	return len(bs), nil
 }
 
-func (h *tee) Close() error {
+func (h *Tee) Close() error {
 	h.Lock()
 	defer h.Unlock()
 	if h.closed {
@@ -108,20 +108,20 @@ func (h *tee) Close() error {
 	return nil
 }
 
-func (h *tee) AddSpout(sp *spout) {
+func (h *Tee) AddSpout(sp *spout) {
 	h.Lock()
 	defer h.Unlock()
 	h.spouts[sp.buf] = sp
 }
 
-func (h *tee) AddBufferedWriters(buflen int, wcs ...io.WriteCloser) {
+func (h *Tee) AddBufferedWriters(buflen int, wcs ...io.WriteCloser) {
 	for _, wc := range wcs {
 		sp := newSpout(buflen, wc)
 		h.AddSpout(sp)
 	}
 }
 
-func (h *tee) AddBufferedChannel(buflen int) chan []byte {
+func (h *Tee) AddBufferedChannel(buflen int) chan []byte {
 	sp := newSpout(buflen, nil)
 	h.AddSpout(sp)
 	return sp.buf
