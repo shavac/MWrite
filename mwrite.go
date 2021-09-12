@@ -70,18 +70,20 @@ func NewTee(buflen int) *Tee {
 	go func() {
 		for bs := range h.buf {
 			h.RLock()
-			for ch, v := range h.spouts {
-				if _, err := v.Write(bs); err != nil {
-					h.Lock()
-					delete(h.spouts, ch)
-					h.Unlock()
+			for ch, w := range h.spouts {
+				if w == nil {
+					ch <- bs
+				} else if _, err := w.Write(bs); err != nil {
+					h.RUnlock()
+					h.DeleteWriter(w)
+					h.RLock()
 				}
 			}
 			h.RUnlock()
 		}
-		for _, v := range h.spouts {
+		for _, w := range h.spouts {
 			h.RLock()
-			v.Close()
+			w.Close()
 			h.RUnlock()
 		}
 		h.spouts = nil
@@ -125,4 +127,21 @@ func (h *Tee) AddBufferedChannel(buflen int) chan []byte {
 	sp := newSpout(buflen, nil)
 	h.AddSpout(sp)
 	return sp.buf
+}
+
+func (h *Tee) DeleteWriter(dwc io.WriteCloser) {
+	h.Lock()
+	defer h.Unlock()
+	for ch, wc := range h.spouts {
+		if wc == dwc {
+			delete(h.spouts, ch)
+			close(ch)
+		}
+	}
+}
+
+func (h *Tee) DeleteChan(dch chan []byte) {
+	h.Lock()
+	defer h.Unlock()
+	delete(h.spouts, dch)
 }
