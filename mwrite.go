@@ -99,21 +99,21 @@ func (t *Tee) Write(bs []byte) (int, error) {
 	return len(bs), nil
 }
 
-func (h *Tee) Close() error {
-	h.Lock()
-	defer h.Unlock()
-	if h.closed {
+func (t *Tee) Close() error {
+	t.Lock()
+	defer t.Unlock()
+	if t.closed {
 		return ErrClosed
 	}
-	close(h.buf)
-	h.closed = true
+	close(t.buf)
+	t.closed = true
 	return nil
 }
 
-func (h *Tee) AddSpout(sp *spout) {
-	h.Lock()
-	defer h.Unlock()
-	h.spouts[sp.buf] = sp
+func (t *Tee) AddSpout(sp *spout) {
+	t.Lock()
+	defer t.Unlock()
+	t.spouts[sp.buf] = sp
 }
 
 func (h *Tee) AddBufferedWriters(buflen int, wcs ...io.WriteCloser) {
